@@ -7,7 +7,7 @@ require('chai')
     .should()
 
 //Pass name of Contract, then as call back and inject all our accounts
-contract('Token', ([deployer, receiver])=>{
+contract('Token', ([deployer, receiver, exchange])=>{
     let token
     const name = 'BerKoin'
     const symbol = 'BKN'
@@ -53,18 +53,22 @@ contract('Token', ([deployer, receiver])=>{
         })
     })
 
-    describe('sending tokens', () =>{
+    describe('delegated token transfer', () =>{
         
             let transferAmount
             let transferResult
 
+        //Approve tokens
+        beforeEach(async() =>{
+            transferAmount = tokens(100)
+            await token.approve(exchange, transferAmount, {from: deployer})
+        })   
+
         describe('success', async () =>{
-                   //Fetch token from Blockchain, before tests
+            //Fetch token from Blockchain, before tests
             beforeEach(async () => {                
-                
                 //Transfer
-                transferAmount = tokens(100)
-                transferResult = await token.transfer(receiver, transferAmount, {from:deployer})
+                transferResult = await token.transferFrom(deployer, receiver,transferAmount, {from:exchange})
             })
 
             //Before Transfer
@@ -86,6 +90,12 @@ contract('Token', ([deployer, receiver])=>{
                 balanceOf.toString().should.equal(tokens(100).toString())
                 console.log("receiver balance after transfer: %d", balanceOf.toString())
             })
+
+            it('resets the allowance', async()=>{
+                const allowance = await token.allowance(deployer, exchange)
+                allowance.toString().should.equal('0')
+            })
+
 
             //Test Event
             it('emits transfer event', async() =>{
@@ -127,5 +137,48 @@ contract('Token', ([deployer, receiver])=>{
             })
         })
 
+    })
+
+    describe('approving tokens', () => {
+        let transferResult
+        let transferAmount
+
+        beforeEach(async ()=>{
+            transferAmount = tokens(100)
+            transferResult = await token.approve(exchange, transferAmount, {from: deployer})
+        })
+
+        describe('success', ()=>{
+            it('allocates an allowance for delegated token spending on an exchange', async()=>{
+                const allowance = await token.allowance(deployer, exchange)
+                allowance.toString().should.equal(transferAmount.toString())
+            })
+
+            it('emits Approval event', () =>{
+                const log = transferResult.logs[0]
+                log.event.should.equal('Approval')
+                const event = log.args
+                event.owner.toString().should.equal(deployer, 'owner is correct')
+                event.spender.should.equal(exchange, 'spender is correct')
+                event.value.toString().should.equal(transferAmount.toString(), 'value is correct')
+
+
+            })
+        })
+
+
+        describe('failure', ()=>{
+
+            it('rejects insufficient amounts', async() =>{
+                //Try to transfer way too many tokens
+                const tooManyTokens = tokens(100000000)
+                await token.transferFrom(deployer, receiver,tooManyTokens, {from: exchange}).should.be.rejectedWith(EVM_REVERT)
+            })
+
+            it('rejects invalid spenders',async () =>{
+                await token.approve(0x0, transferAmount, {from: deployer}).should.be.rejectedWith(EVM_REVERT)
+
+            })
+        })
     })
 })
