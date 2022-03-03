@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
 
-pragma solidity >=0.5.0 <0.9.0;
+pragma solidity >=0.5.0 < 0.9.0;
 import "./Token.sol";
 import "openzeppelin-solidity/contracts/math/SafeMath.sol";
 
@@ -37,7 +37,7 @@ contract Exchange{
 
     //Events
     event Deposit(address token, address user, uint256 amount, uint256 balance);
-
+    event Withdraw(address token, address user, uint256 amount, uint256 balance);
     //Fallback: reverts if Ether is sent to this contract by mistake
     function fallback() external {        
         revert();
@@ -49,9 +49,20 @@ contract Exchange{
         tokens[ETHER][msg.sender] = tokens[ETHER][msg.sender].add(msg.value);
 
         //Emit event
-        emit Deposit(ETHER, msg.sender,msg.value,tokens[ETHER][msg.sender]);
-   
+        emit Deposit(ETHER, msg.sender,msg.value,tokens[ETHER][msg.sender]);   
     }
+
+    function withdrawEther(uint _amount) public {
+        require(tokens[ETHER][msg.sender]>= _amount);
+        tokens[ETHER][msg.sender] = tokens[ETHER][msg.sender].sub(_amount);
+
+        //Solidity prefered method of sending ETH forwards all gas. 
+        //(bool success, ) = msg.sender.call{value:_amount}("");
+        //For Solidity  0.7+ :( 
+
+        msg.sender.transfer(_amount);
+        emit Withdraw(ETHER,msg.sender,_amount,tokens[ETHER][msg.sender]);
+    } 
 
     function depositToken(address _token, uint _amount) public {
         //Dont Allow Ether Deposit
@@ -67,4 +78,15 @@ contract Exchange{
         emit Deposit(_token, msg.sender,_amount,tokens[_token][msg.sender]);
     }
 
+    function withdrawToken(address _token, uint256 _amount) public{
+        require(_token !=ETHER);
+        require(tokens[_token][msg.sender] >= _amount);
+        tokens[_token][msg.sender] =   tokens[_token][msg.sender].sub(_amount);
+        require(Token(_token).transfer(msg.sender,_amount));
+        emit Withdraw(ETHER,msg.sender,_amount,tokens[ETHER][msg.sender]);
+    }
+
+    function balanceOf(address _token, address _user) public view returns (uint256 value){
+        return tokens[_token][_user];
+    }
 }
