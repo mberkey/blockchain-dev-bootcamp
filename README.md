@@ -1,3 +1,10 @@
+This project is a learning tool created by Dapp Univerisity, it is not intended for a full production exchange environment. 
+
+
+
+
+
+
 # Getting Started with Create React App
 
 This project was bootstrapped with [Create React App](https://github.com/facebook/create-react-app).
