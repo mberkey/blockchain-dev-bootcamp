@@ -11,11 +11,11 @@ import "openzeppelin-solidity/contracts/math/SafeMath.sol";
 // TODO:
 // [x] Set the fee account
 // [x] Deposit Ether
-// [ ] Withdraw Ether
+// [x] Withdraw Ether
 // [x] Deposit tokens
-// [ ] Withdraw tokens
-// [ ] Check balances
-// [ ] Make order
+// [x] Withdraw tokens
+// [x] Check balances
+// [x] Make order
 // [ ] Cancel order
 // [ ] Fill order
 // [ ] Charge fees
@@ -25,9 +25,17 @@ contract Exchange{
     uint256 public feePercent; 
     address public feeAccount; //Account to receive tx fees
     address constant ETHER = address(0); //Store Ether tokens in mapping w blank address
+    uint256 public orderCount;
+  
     //Mapping for tokens in exchange
     //first address is token address, second is user address and tokens held by user
     mapping(address => mapping(address => uint256)) public tokens;
+    
+    //Store the orders Id, and each order.
+    mapping(uint256 => _Order) public orders;
+
+    //Store canceled orders
+    mapping(uint256 => bool)public orderCancelled;
 
     //Set Fee Account
     constructor (address _feeAccount, uint256 _feePercent ) public {
@@ -38,8 +46,23 @@ contract Exchange{
     //Events
     event Deposit(address token, address user, uint256 amount, uint256 balance);
     event Withdraw(address token, address user, uint256 amount, uint256 balance);
+    event Order(uint256 id,address user,address tokenGet,uint256 amountGet,address tokenGive,uint256 amountGive,uint256 timestamp);
+    event Cancel(uint256 id,address user,address tokenGet,uint256 amountGet,address tokenGive,uint256 amountGive,uint256 timestamp);
+
+
+    //Model the order
+    struct _Order{
+        uint256 id;
+        address user;          //Person who made order
+        address tokenGet;      
+        uint256 amountGet;
+        address tokenGive;
+        uint256 amountGive;
+        uint256 timestamp;
+    }
+
     //Fallback: reverts if Ether is sent to this contract by mistake
-    function fallback() external {        
+    function fallback() pure external {        
         revert();
     }
 
@@ -86,7 +109,29 @@ contract Exchange{
         emit Withdraw(ETHER,msg.sender,_amount,tokens[ETHER][msg.sender]);
     }
 
-    function balanceOf(address _token, address _user) public view returns (uint256 value){
+    function balanceOf(address _token, address _user) public view returns (uint256){
         return tokens[_token][_user];
+    }
+
+    //Add order to storage
+    //token you want to get, amount in that, token youre giving, amount in that
+    function makeOrder(address _tokenGet, uint256 _amountGet, address _tokenGive, uint256 _amountGive) public {
+        orderCount = orderCount.add(1);
+        orders[orderCount] = _Order(orderCount, msg.sender,_tokenGet, _amountGet, _tokenGive, _amountGive, now);
+        emit Order(orderCount, msg.sender,_tokenGet, _amountGet, _tokenGive, _amountGive, now);
+    }
+
+    function cancelOrder(uint256 _id) public{
+        _Order storage _order = orders[_id];
+        
+        //Must by "my" order
+        require(address(_order.user) == msg.sender);
+        
+        //Order must exist
+        require(_order.id == _id); 
+        
+        orderCancelled[_id] = true;
+        emit Cancel(_order.id,msg.sender,_order.tokenGet, _order.amountGet,_order.tokenGive, _order.amountGive,_order.timestamp);
+
     }
 }
