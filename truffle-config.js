@@ -7,7 +7,14 @@ module.exports = {
     development: { //Dev Network
       host: "127.0.0.1",      // Localhost (default: none)
       port: 9545,            // Ganache Port (default: none)
-      network_id: "5777"     // Any network (default: none)
+      network_id: "5777",     // Any network (default: none)
+      gasPrice: 10000000000 
+     },
+     develop: { //Dev Network
+      host: "127.0.0.1",      // Localhost (default: none)
+      port: 9545,            // Ganache Port (default: none)
+      network_id: "5777",     // Any network (default: none)
+      gasPrice: 10000000000 
      },
   },
   contracts_directory: './src/contracts/',  //Dont forget last /

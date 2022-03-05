@@ -16,9 +16,9 @@ import "openzeppelin-solidity/contracts/math/SafeMath.sol";
 // [x] Withdraw tokens
 // [x] Check balances
 // [x] Make order
-// [ ] Cancel order
-// [ ] Fill order
-// [ ] Charge fees
+// [x] Cancel order
+// [x] Fill order
+// [x] Charge fees
 
 contract Exchange{
     using SafeMath for uint;
@@ -37,6 +37,9 @@ contract Exchange{
     //Store canceled orders
     mapping(uint256 => bool)public orderCancelled;
 
+    //Store fufilled orders
+    mapping(uint256 => bool) public orderFilled;
+
     //Set Fee Account
     constructor (address _feeAccount, uint256 _feePercent ) public {
         feeAccount = _feeAccount;
@@ -48,7 +51,7 @@ contract Exchange{
     event Withdraw(address token, address user, uint256 amount, uint256 balance);
     event Order(uint256 id,address user,address tokenGet,uint256 amountGet,address tokenGive,uint256 amountGive,uint256 timestamp);
     event Cancel(uint256 id,address user,address tokenGet,uint256 amountGet,address tokenGive,uint256 amountGive,uint256 timestamp);
-
+    event Trade(uint256 id, address user, address tokenGet, uint256 amountGet, address tokenGive, uint256 amountGive, address userFill, uint256 timestamp);
 
     //Model the order
     struct _Order{
@@ -133,5 +136,49 @@ contract Exchange{
         orderCancelled[_id] = true;
         emit Cancel(_order.id,msg.sender,_order.tokenGet, _order.amountGet,_order.tokenGive, _order.amountGive,_order.timestamp);
 
+    }
+
+    function fillOrder(uint256 _id) public{
+        //Make sure we are filling a 'valid' order
+        require(_id > 0 && _id <= orderCount);
+        //Make sure order hasnt been fufilled
+        require(!orderFilled[_id]);
+        //Make sure order isnt cancelled;
+        require(!orderCancelled[_id]);
+
+        //Fetch Order
+        _Order storage _order = orders[_id];
+        
+        //Do Trade
+        _trade(_order.id,_order.user,_order.tokenGet,_order.amountGet,_order.tokenGive,_order.amountGive);
+
+        //Mark as filled      
+        orderFilled[_order.id] = true;
+    }
+
+    function _trade(uint256 _orderId, address _user, address _tokenGet, uint256 _amountGet, address _tokenGive, uint256 _amountGive) internal{
+
+        //Amount * 10% = fee
+        uint256 _feeAmount = _amountGive.mul(feePercent).div(100);
+        
+        //Do Trade
+        //msg.sender = person filling order, Subtract the amount of the order from Fufiller
+        //Calc the fee addition to original amount
+        tokens[_tokenGet][msg.sender] =  tokens[_tokenGet][msg.sender].sub(_amountGet.add(_feeAmount));
+
+        //User is person who created order, Add requested order amount to User.
+        tokens[_tokenGet][_user] = tokens[_tokenGet][_user].add(_amountGet);
+        
+        //Charge Fees
+        tokens[_tokenGet][feeAccount] = tokens[_tokenGet][feeAccount].add(_feeAmount);
+
+        //Subtract the tokens from user that were given in order to create order.
+        tokens[_tokenGive][_user] = tokens[_tokenGive][_user].sub(_amountGive);
+        
+        //Add these tokens to person filling 
+        tokens[_tokenGive][msg.sender] = tokens[_tokenGive][msg.sender].add(_amountGive);
+ 
+        //Emit Trade Event
+        emit Trade(_orderId, _user, _tokenGet,_amountGet, _tokenGive, _amountGive, msg.sender,now);
     }
 }
