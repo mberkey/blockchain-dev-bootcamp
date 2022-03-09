@@ -5,7 +5,7 @@ require('dotenv').config();
 module.exports = {
   networks: {
     development: { //Dev Network
-      host: "127.0.0.1",      // Localhost (default: none)
+      host: "172.26.144.1",      // Localhost (default: none)
       port: 7545,            // Ganache Port (default: none)
       network_id: "*",     // Any network (default: none)
       gasPrice: 10000000000 
