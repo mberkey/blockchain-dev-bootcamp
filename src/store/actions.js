@@ -1,3 +1,5 @@
+
+//State updated
 export function web3Loaded(connection){
     return{
         type:'WEB3_LOADED',
@@ -14,7 +16,7 @@ export function web3AccountLoaded(account){
 
 export function tokenLoaded(token){
     return{
-        type: 'WEB3_TOKEN_LOADED',
+        type: 'TOKEN_LOADED',
         token
     }
 }
