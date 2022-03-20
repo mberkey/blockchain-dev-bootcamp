@@ -41,12 +41,13 @@ class App extends Component{
   }
 }
 //Map state to props
-function mapStatetoProps(state){
+function mapState(state){
+  console.log(`Contracts Loaded: ${contractsLoadedSelector(state)}`)
   return{
     contractsLoaded: contractsLoadedSelector(state)
-  
+
   }
 }
 
 //Connect app to redux
-export default connect(mapStatetoProps)(App);
+export default connect(mapState)(App);
